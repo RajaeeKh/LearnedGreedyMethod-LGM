@@ -779,15 +779,15 @@ def run_experiemnts():
             omp_true_dict_MMSE_sparsity_array[i, j] = res['sparsity_average']
 
             if (MMSE_run_list[j]):
-                res = calculate_all_loss_model_synthitic_data(
-                    sp_model_true_dict, test_dataset2
-                    # ,True
-                )
-
-                print('SP true dict average test loss = ', res['loss_average'])
-                print('SP true dict average test sparsity = ', res['sparsity_average'])
-                sp_true_dict_mse_array[i, j] = res['loss_average']
-                sp_true_dict_sparsity_array[i, j] = res['sparsity_average']
+                # res = calculate_all_loss_model_synthitic_data(
+                #     sp_model_true_dict, test_dataset2
+                #     # ,True
+                # )
+                #
+                # print('SP true dict average test loss = ', res['loss_average'])
+                # print('SP true dict average test sparsity = ', res['sparsity_average'])
+                # sp_true_dict_mse_array[i, j] = res['loss_average']
+                # sp_true_dict_sparsity_array[i, j] = res['sparsity_average']
 
                 res = calculate_all_loss_model_synthitic_data(
                     mp_model_true_dict, test_dataset2
@@ -824,26 +824,26 @@ def run_experiemnts():
                 omp_MMSE_mse_array[i, j] = res['loss_average']
                 omp_MMSE_sparsity_array[i, j] = res['sparsity_average']
 
-                tmp_trainig_data = train_model_synthitic_data(train_dataset, test_dataset, sp_model, 'SP_model',
-                                                              criterion, batch_size=omp_batch_size, epochs=sp_epochs,
-                                                              learning_rate=sp_learning_rate, optim_type='Adam'
-                                                              #  ,extra_input_mode=True
-                                                              #  ,enable_schedluer=True
-                                                              , extra_info_function=lambda x_model: get_model_dict_info(
-                        torch.from_numpy(true_D[i]), x_model)
-                                                              )
-
-                current_training_data['SP_model'] = tmp_trainig_data
-                current_models_to_save['SP_model'] = sp_model.state_dict()
-
-                res = calculate_all_loss_model_synthitic_data(sp_model, test_dataset2
-                                                              # ,True
-                                                              )
-
-                print('SP average test loss = ', res['loss_average'])
-                print('SP average test sparsity = ', res['sparsity_average'])
-                sp_mse_array[i, j] = res['loss_average']
-                sp_sparsity_array[i, j] = res['sparsity_average']
+                # tmp_trainig_data = train_model_synthitic_data(train_dataset, test_dataset, sp_model, 'SP_model',
+                #                                               criterion, batch_size=omp_batch_size, epochs=sp_epochs,
+                #                                               learning_rate=sp_learning_rate, optim_type='Adam'
+                #                                               #  ,extra_input_mode=True
+                #                                               #  ,enable_schedluer=True
+                #                                               , extra_info_function=lambda x_model: get_model_dict_info(
+                #         torch.from_numpy(true_D[i]), x_model)
+                #                                               )
+                #
+                # current_training_data['SP_model'] = tmp_trainig_data
+                # current_models_to_save['SP_model'] = sp_model.state_dict()
+                #
+                # res = calculate_all_loss_model_synthitic_data(sp_model, test_dataset2
+                #                                               # ,True
+                #                                               )
+                #
+                # print('SP average test loss = ', res['loss_average'])
+                # print('SP average test sparsity = ', res['sparsity_average'])
+                # sp_mse_array[i, j] = res['loss_average']
+                # sp_sparsity_array[i, j] = res['sparsity_average']
 
                 tmp_trainig_data = train_model_synthitic_data(train_dataset, test_dataset, mp_model, 'MP_model',
                                                               criterion, batch_size=omp_batch_size, epochs=mp_epochs,
