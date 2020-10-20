@@ -1187,20 +1187,27 @@ class Inner_Patch_OMP_Model(nn.Module):
 
     def show_atoms(self):
         # self.inner_show_atoms(normlize_kernel(self.D_L_w_e),self.channels,'D_L_w_e')
-        self.inner_show_atoms(self.D_L_w_e, self.channels, 'D_L_w_e')
+        D_L_w_e = self.D_L_w_e
+        # if(self.add_DC_atom):
+        #     D_L_w_e = self.cat_DC_atom(D_L_w_e, self.ones_D_L_w_e.abs())
+
+        self.inner_show_atoms(D_L_w_e, self.channels, 'D_L_w_e')
         if(self.equal_dictionaries == False):
             D_L_d = self.D_L_d
+            # if (self.add_DC_atom):
+            #     self.cat_DC_atom(D_L_d, self.ones_D_L_d.abs())
 
-            if (self.enable_rain_net):
-                D_L_d_data = D_L_d.clone()
-                D_L_d_data=torch.mul(D_L_d_data,self.rain_function(self.data_atoms_coeffs[1:].view(1,-1)))
-                self.inner_show_atoms(D_L_d_data, self.channels, 'D_L_d_data')
+            # if (self.enable_rain_net):
+            #     D_L_d_data = D_L_d.clone()
+            #     D_L_d_data=torch.mul(D_L_d_data,self.rain_function(self.data_atoms_coeffs[1:].view(1,-1)))
+            #     self.inner_show_atoms(D_L_d_data, self.channels, 'D_L_d_data')
+            #
+            #     D_L_d_rain = D_L_d.clone()
+            #     D_L_d_rain = torch.mul(D_L_d_rain, 1-self.rain_function(self.data_atoms_coeffs[1:].view(1, -1)))
+            #     self.inner_show_atoms(D_L_d_rain, self.channels, 'D_L_d_rain')
+            # else:
+            self.inner_show_atoms(D_L_d, self.channels, 'D_L_d')
 
-                D_L_d_rain = D_L_d.clone()
-                D_L_d_rain = torch.mul(D_L_d_rain, 1-self.rain_function(self.data_atoms_coeffs[1:].view(1, -1)))
-                self.inner_show_atoms(D_L_d_rain, self.channels, 'D_L_d_rain')
-            else:
-                self.inner_show_atoms(D_L_d, self.channels, 'D_L_d')
 
 
 
@@ -1228,21 +1235,34 @@ class Inner_Patch_OMP_Model(nn.Module):
                              ,dtype=D.dtype,device=D.device)+pad_coefficint
         D_new2[indecis,:] = D_new
 
+        if(self.enable_rain_net):
+            a, b = D.min(), D.max()
+            pad_indecis = torch.arange(D_tmp2.numel())[D_tmp2<=0.1]
+            rain_coefs = self.rain_function(self.data_atoms_coeffs[1:].view(1,-1))
+            D_new2[pad_indecis,:]=a+(b-a)*rain_coefs
+            sorted_indecis = torch.argsort(rain_coefs[0])
+            D_new2 = D_new2[:,sorted_indecis]
+
+
         kernel_size = (n_row+2*zero_pixels_pad,n_col+2*zero_pixels_pad)
         fold = nn.Fold(output_size=(rows_num*(n_row+2*zero_pixels_pad),patches_per_row*(n_col+2*zero_pixels_pad)),
                        kernel_size=kernel_size,
                        stride = kernel_size)
-        D_image = fold(D_new2.unsqueeze(dim=0)).squeeze(dim=0) + abs(min(0,pad_coefficint))
+        # D_image = fold(D_new2.unsqueeze(dim=0)).squeeze(dim=0) + abs(min(0,pad_coefficint))
+        D_image = fold(D_new2.unsqueeze(dim=0)).squeeze(dim=0)
 
 
         if (channels == 3):
             a,b = D_image.min(),D_image.max()
+            print('values range = ',(a,b))
             # D_image = (D_image-a)/(b-a)
             # plt.imshow(D_image.transpose(0,1).transpose(1,2).clone().detach().cpu())
             final_D = D_image.transpose(0,1).transpose(1,2).clone().detach().cpu()
+            print(final_D.shape)
         if (channels == 1):
             # plt.imshow(D_image.squeeze(dim=0).clone().detach().cpu(), cmap='gray')
             final_D = D_image.squeeze(dim=0).clone().detach().cpu()
+            print(final_D.shape)
 
         # plt.title(name)
         # # axs[3].axis('off')
@@ -1831,7 +1851,7 @@ class Inner_Patch_OMP_Model(nn.Module):
                     patches_data_atoms = torch.cat((patches_data_atoms,current_data_atoms),dim=1)
 
             else:
-                tmp = max_func(coherence)
+                tmp = max_func(coherence) #MPT
                 tmp2 = torch.abs(tmp)
                 max_vals,max_indices = torch.max(tmp2, dim=1, keepdim=True)
                 tmp2 = torch.div(tmp2,max_vals)
@@ -1978,9 +1998,17 @@ class Inner_Patch_OMP_Model(nn.Module):
             if(remained_patches.numel()==0):
                 break
 
+        #batch,n,s
+
+        #batch,1,s
         if (self.apply_attention_mode):
             attention_weights = self.attention_net(original_patches - tmp_res)
             denoised_patches = torch.mul(tmp_res, attention_weights).sum(dim=2, keepdim=True)
+            if (self.extra_info_flag):
+                tmp_cardinality_range = torch.arange(tmp_res.shape[2]).to(device=attention_weights.device
+                                                                          ,dtype=attention_weights.dtype)+1
+                denoised_patches_sparsity = torch.mul(tmp_cardinality_range.view(1,1,-1), attention_weights).sum(dim=2).squeeze(dim=1)
+                denoised_patches_cardinality_weights = attention_weights.clone()
 
         if ((remained_patches.numel() > 0) and (self.apply_attention_mode==False)):
             if (self.enable_rain_net):
@@ -2016,6 +2044,8 @@ class Inner_Patch_OMP_Model(nn.Module):
             res_data['chosen_support'] = chosen_support
             if(self.enable_rain_net):
                 res_data['rain_component_patches'] = rain_component_patches
+            if (self.apply_attention_mode):
+                res_data['denoised_patches_cardinality_weights'] = denoised_patches_cardinality_weights
 
             denoised_patches = res_data
 
@@ -2340,6 +2370,7 @@ class OMP_Model(nn.Module):
 
 
 
+    #batch,channels,N_row,N_col
     def forward(self, x):
 
         if(self.extra_input):
@@ -2377,6 +2408,7 @@ class OMP_Model(nn.Module):
 
         original_x = x.clone()
 
+        #batch,n,M
         patches = unfold(x)
         if(self.extra_input):
             if (self.extra_input_type == 'stopping_thresholds'):
@@ -2394,6 +2426,8 @@ class OMP_Model(nn.Module):
         patches_shape = patches.shape
 
         patches = torch.unsqueeze(torch.transpose(patches,1,2).reshape(-1,patches.shape[1]),dim=2)
+
+        #batch*M,n,1
 
         if (self.extra_input):
             if (self.extra_input_type == 'stopping_thresholds'):
@@ -2417,6 +2451,9 @@ class OMP_Model(nn.Module):
                 avg_sparsity = res['sparsity']
                 if (self.enable_rain_net):
                     rain_component_patches = res['rain_component_patches']
+                if(self.inner_OMP_model.apply_attention_mode):
+                    denoised_patches_cardinality_weights = res['denoised_patches_cardinality_weights']
+
                 res = res['output']
 
 
@@ -2429,6 +2466,9 @@ class OMP_Model(nn.Module):
                 avg_sparsity = torch.zeros(patches.shape[0],dtype=patches.dtype,device=patches.device)
                 if(self.enable_rain_net):
                     rain_component_patches = torch.zeros_like(patches)
+                if (self.inner_OMP_model.apply_attention_mode):
+                    denoised_patches_cardinality_weights = torch.zeros(patches.shape[0],1
+                                               ,self.inner_OMP_model.k,dtype=patches.dtype,device=patches.device)
 
             numnum = 600000
 
@@ -2453,6 +2493,8 @@ class OMP_Model(nn.Module):
                     avg_sparsity[gg] = res['sparsity']
                     if(self.enable_rain_net):
                         rain_component_patches[gg] = res['rain_component_patches']
+                    if (self.inner_OMP_model.apply_attention_mode):
+                        denoised_patches_cardinality_weights[gg] = res['denoised_patches_cardinality_weights']
 
                     res = res['output']
 
@@ -2496,7 +2538,8 @@ class OMP_Model(nn.Module):
         denoised_images = torch.div(denoised_images_sum,div)
 
         if(self.get_extra_info_flag_flag):
-            avg_sparsity = avg_sparsity.reshape(patches_shape[0],patches_shape[2]).mean(dim=1)
+            sparsity_per_patch = avg_sparsity.reshape(patches_shape[0],patches_shape[2])
+            avg_sparsity=sparsity_per_patch.mean(dim=1)
             if (self.enable_rain_net):
                 rain_component_patches = rain_component_patches.squeeze(dim=2).reshape(patches_shape[0],patches_shape[2],patches_shape[1]).transpose(1,2)
                 rain_ones = torch.ones_like(rain_component_patches)
@@ -2510,12 +2553,17 @@ class OMP_Model(nn.Module):
         if(self.get_extra_info_flag_flag):
             res = {'output':denoised_images
                 # ,'dist':shift_patches_distances
-                   ,'sparsity':avg_sparsity}
+                   ,'sparsity':avg_sparsity
+                   ,'sparsity_per_patch':sparsity_per_patch
+                   }
             if (self.enable_rain_net):
                 res['rain_component_image'] = rain_component_image
                 res['pre_output'] = denoised_images
                 res['pre_output2'] = original_x - rain_component_image
                 res['output'] = self.merge_net(torch.cat((original_x, res['pre_output2'], res['pre_output']), dim=1))
+
+            if (self.inner_OMP_model.apply_attention_mode):
+                res['denoised_patches_cardinality_weights'] = denoised_patches_cardinality_weights
 
         else:
             res = (0, denoised_images)
