@@ -1,5 +1,5 @@
-# [Learned Greedy Method (LGM): A Novel Neural Architecture for Sparse Coding and Beyond]{https://arxiv.org/abs/2010.07069}
-Code of the paper by Rajaei Khatib, Dror Simon and Michael Elad
+# Learned Greedy Method (LGM): A Novel Neural Architecture for Sparse Coding and Beyond
+Code of the [paper]{https://arxiv.org/abs/2010.07069} by Rajaei Khatib, Dror Simon and Michael Elad
 
 ## Abstract
 
