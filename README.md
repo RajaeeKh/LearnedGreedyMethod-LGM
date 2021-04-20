@@ -9,5 +9,7 @@ A constructive remedy to this drawback is a systematic design of such networks b
 aiming for the sparse representations of the processed signals. In this paper we revisit this sparse coding task and propose an unfolded version of a greedy pursuit algorithm for the same goal. More specifically, we concentrate on the well-known Orthogonal-Matching-Pursuit (OMP) algorithm, and introduce its unfolded and learned version. Key features of our Learned Greedy Method (LGM) are the ability to accommodate a dynamic number of unfolded layers, and a stopping mechanism based on representation error, both adapted to the input. We develop several variants of the proposed LGM architecture and test some of them in various experiments, demonstrating their flexibility and efficiency.
 
 Paper links: 
+
 https://arxiv.org/abs/2010.07069
+
 https://authors.elsevier.com/a/1cqiD3k8X3imHm
